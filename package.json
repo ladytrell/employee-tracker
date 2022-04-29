@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jest"
   },
   "author": "",
   "license": "ISC",
@@ -12,5 +12,8 @@
     "console.table": "^0.10.0",
     "inquirer": "^8.2.3",
     "mysql2": "^2.3.3"
+  },
+  "devDependencies": {
+    "jest": "^28.0.2"
   }
 }
