@@ -10,22 +10,13 @@ const { get } = require('express/lib/request');
 /*
 To Dos
 
- Construct inquirer prompts
-    •employee
-        o	first_name
-        o	last_name
-        o	role
-        o	manager
-    Menu options: view all departments, 
-        view all roles, 
+ Construct inquirer prompts   
+    Menu options:        
         view all employees, 
-        add an employee, 
         and update an employee role
 
-    MySQL Queries
-        view all roles, 
+    MySQL Queries 
         view all employees, 
-        add an employee, 
         and update an employee role
 */
 

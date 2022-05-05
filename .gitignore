@@ -4,3 +4,5 @@ package-lock.json
 .DS_Store
 .cspell
 .env
+db/department.js
+department.js
