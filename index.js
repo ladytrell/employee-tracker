@@ -31,6 +31,10 @@ class EmployeeTracker {
         
     }
 
+    loadDepartments() {
+
+    }
+
     // Add a department
     async addDepartment () {        
         const { name } = await inquirer.prompt(departmentQuestions);
@@ -264,35 +268,59 @@ class EmployeeTracker {
     // Get all rows of a table 
 async updateEmployeeRole(){
         let rows  = await this.getTable('employee'); 
-        const results = rows.rows;
+        let results = rows.rows;
 
-        const list =[];
+        if(results.length == 0){
+            console.log("Please add an employee first.\n");
+            return;
+        }
+
+        const employeeList =[];
         results.forEach(element => {
             const tempStr = element.id + ' ' + element.name;
-            list.push(tempStr);
+            employeeList.push(tempStr);
            }
-        )
-        console.log(list);
-        const {employee} = await inquirer.prompt( [
+        );
+
+        rows = await this.getTable('role'); 
+        results = rows.rows;
+        const roleList =[];
+
+        results.forEach (element => {
+            const tempStr = element.id + ' ' +  element.title;
+            roleList.push(tempStr);
+        });
+
+        if(roleList.length == 0){
+            console.log("Please add a role first.\n");
+            return;
+        }    
+                  
+        const {employee, roleName} = await inquirer.prompt( [
             {
                 type: 'list',
                 name: 'employee',
                 message: '\nSelect an employee\n',
-                choices: list            
+                choices: employeeList            
+            },
+            {
+                type: 'list',
+                name: 'roleName',
+                message: '\nSelect a role\n',
+                choices: roleList            
             }
-        ]);
+        ]);  
         console.log(employee);
-        const [id, ...name ]= employee.split(' ');
-        console.log(id);
+        const [employeeID, ...name ]= employee.split(' ');
+        
+        console.log(roleName);
+        const [newRoleID, ...str2 ]= roleName.split(' ');
 
-         /*   return new Promise( (resolve, reject) => {
+        return new Promise( (resolve, reject) => {
                 
-            const sql = `SELECT e.id, CONCAT (e.first_name, ' ', e.last_name) AS name, role.title AS title, department.name AS department, role.salary AS salary,
-                                        CONCAT (m.first_name, ' ', m.last_name) AS manager
-                                        FROM ${name} e
-                                        JOIN ${name} m ON e.manager_id=m.id
-                                        JOIN role ON e.role_id=role.id
-                                        JOIN department ON role.department_id=department.id`;
+            const sql = `UPDATE employee
+                        SET role_id=${newRoleID}
+                        WHERE employee.id=${employeeID};`;
 
             db.query(sql, (err, rows) => {
                 if (err) {
@@ -304,7 +332,8 @@ async updateEmployeeRole(){
                         rows:  rows
                     }) 
                 }
-            })*/
+            })
+        });
         
     }//End updateEmployeeRole
     
@@ -320,7 +349,7 @@ async updateEmployeeRole(){
 
     // List and process menu options
     async menuPrompt () {
-        let rows;
+        let result;
         const { choice: answer } = await inquirer.prompt(menu);
 
         switch (answer) {
@@ -331,18 +360,23 @@ async updateEmployeeRole(){
             case   'Add an employee': await this.addEmployee();
                 break;
             case  'View all departments': 
-                rows = await this.getTable('department'); 
-                this.printTable('department', rows.rows);
+                result = await this.getTable('department'); 
+                this.printTable('department', result.rows);
                 break;
             case  'View all roles': 
-                rows  = await this.getTable('role'); 
-                this.printTable('role', rows.rows);
+                result  = await this.getTable('role'); 
+                this.printTable('role', result.rows);
                 break;
             case  'View all employees': 
-                rows  = await this.getTable('employee'); 
-                this.printTable('employee', rows.rows);
+                result  = await this.getTable('employee'); 
+                this.printTable('employee', result.rows);
                 break;
-            case   'Update an employee\'s role': await this.updateEmployeeRole();
+            case   'Update an employee\'s role': 
+                result = await this.updateEmployeeRole();
+                if(result.ok)
+                {
+                    console.log('Employee Role Updated');
+                }
                 break;
             default: process.exit();
         }
