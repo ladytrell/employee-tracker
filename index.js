@@ -11,12 +11,10 @@ const { get } = require('express/lib/request');
 To Dos
 
  Construct inquirer prompts   
-    Menu options:        
-        view all employees, 
+    Menu options:     
         and update an employee role
 
-    MySQL Queries 
-        view all employees, 
+    MySQL Queries  
         and update an employee role
 */
 
@@ -59,7 +57,8 @@ class EmployeeTracker {
     async addRole () {          
         const {rows: list} = await this.getTable('department', 'name'); 
         console.log(list);
-        if(!list){
+        
+        if(list.length == 0){
             console.log("Please add a department first.\n");
             return;
         }
@@ -119,7 +118,7 @@ class EmployeeTracker {
 
         rows.forEach (item => list.push(item.title));
 
-        if(!list){
+        if(list.length == 0){
             console.log("Please add a role first.\n");
             return;
         }
@@ -183,7 +182,7 @@ class EmployeeTracker {
         console.log(`Added ${last_name}, ${first_name} to the database\n`);
     }// Add Employee
 
-    // Get all table rows
+    // Get all rows of a table 
     async getTable(name){
         return new Promise( (resolve, reject) => {
                     
@@ -195,6 +194,14 @@ class EmployeeTracker {
                 case 'role':  sql = `SELECT ${name}.id, ${name}.title, ${name}.salary, department.name AS department
                                     FROM ${name}
                                     JOIN department ON ${name}.department_id=department.id;`;
+                    break;
+                    
+                case 'employee':  sql = `SELECT e.id, CONCAT (e.first_name, ' ', e.last_name) AS name, role.title AS title, department.name AS department, role.salary AS salary,
+                                        CONCAT (m.first_name, ' ', m.last_name) AS manager
+                                        FROM ${name} e
+                                        JOIN ${name} m ON e.manager_id=m.id
+                                        JOIN role ON e.role_id=role.id
+                                        JOIN department ON role.department_id=department.id`;
                     break;
                 default:    sql = `SELECT * FROM ${name}`;
             }
@@ -211,7 +218,7 @@ class EmployeeTracker {
                 }
             })
         });
-    }//End getDepartments
+    }//End getTable
 
     // Get Single Department by name
     async getDepartment(name){
@@ -254,6 +261,63 @@ class EmployeeTracker {
         });
     }//End Role Names  
 
+    // Get all rows of a table 
+async updateEmployeeRole(){
+        let rows  = await this.getTable('employee'); 
+        const results = rows.rows;
+
+        const list =[];
+        results.forEach(element => {
+            const tempStr = element.id + ' ' + element.name;
+            list.push(tempStr);
+           }
+        )
+        console.log(list);
+        const {employee} = await inquirer.prompt( [
+            {
+                type: 'list',
+                name: 'employee',
+                message: '\nSelect an employee\n',
+                choices: list            
+            }
+        ]);
+        console.log(employee);
+        const [id, ...name ]= employee.split(' ');
+        console.log(id);
+
+         /*   return new Promise( (resolve, reject) => {
+                
+            const sql = `SELECT e.id, CONCAT (e.first_name, ' ', e.last_name) AS name, role.title AS title, department.name AS department, role.salary AS salary,
+                                        CONCAT (m.first_name, ' ', m.last_name) AS manager
+                                        FROM ${name} e
+                                        JOIN ${name} m ON e.manager_id=m.id
+                                        JOIN role ON e.role_id=role.id
+                                        JOIN department ON role.department_id=department.id`;
+
+            db.query(sql, (err, rows) => {
+                if (err) {
+                    reject({ error: err.message });
+                    return;
+                } else {
+                    resolve({
+                        ok: true,
+                        rows:  rows
+                    }) 
+                }
+            })*/
+        
+    }//End updateEmployeeRole
+    
+    printTable (table, rows) {
+          
+        if(rows.length == 0) {
+            console.log(`No ${table}s are present\n`)
+            return;
+        }             
+        console.log('\n\n');
+        console.table(rows);  
+    }
+
     // List and process menu options
     async menuPrompt () {
         let rows;
@@ -267,16 +331,18 @@ class EmployeeTracker {
             case   'Add an employee': await this.addEmployee();
                 break;
             case  'View all departments': 
-                rows = await this.getTable('department');                
-                console.log('\n\n');
-                console.table(rows.rows);                
-                console.log('\n\nPress down arrow key to display menu');
+                rows = await this.getTable('department'); 
+                this.printTable('department', rows.rows);
                 break;
             case  'View all roles': 
-                rows = await this.getTable('role');                
-                console.log('\n\n');
-                console.table(rows.rows);                
-                console.log('\n\nPress down arrow key to display menu');
+                rows  = await this.getTable('role'); 
+                this.printTable('role', rows.rows);
+                break;
+            case  'View all employees': 
+                rows  = await this.getTable('employee'); 
+                this.printTable('employee', rows.rows);
+                break;
+            case   'Update an employee\'s role': await this.updateEmployeeRole();
                 break;
             default: process.exit();
         }
