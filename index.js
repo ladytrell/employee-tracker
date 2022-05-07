@@ -5,40 +5,24 @@ const Department = require('./lib/classes/Department');
 const Roles = require('./lib/classes/Roles');
 const Employee = require('./lib/classes/Employee');
 const db = require('./config/connection');
-const { get } = require('express/lib/request');
-
-/*
-To Dos
-
- Construct inquirer prompts   
-    Menu options:     
-        and update an employee role
-
-    MySQL Queries  
-        and update an employee role
-*/
 
 class EmployeeTracker {
     constructor (){
         this.departments = [];
-       /* const {rows: list} = this.getDepartments()
-        .then(() => {
-            this.departments = list;
-        });
-        */
         this.roles = [];
         this.employees = [];
         
     }
 
+    //Refactor TO DO: Load database content at app start
     loadDepartments() {
 
     }
 
     // Add a department
     async addDepartment () {        
+        // Prompt for input
         const { name } = await inquirer.prompt(departmentQuestions);
-        //console.log(name);
         const department = new Department(name);
         this.departments.push(department);
 
@@ -47,9 +31,10 @@ class EmployeeTracker {
         VALUES (?)`;
         const params = [name];
     
+        // Write entry to the database
         db.query(sql, params, (err, result) => {
             if (err) {
-                res.status(400).json({ error: err.message });
+                console.log(err.message, '\n');
                 return;
             }
         });
@@ -58,15 +43,16 @@ class EmployeeTracker {
     }
 
     // Add a role
-    async addRole () {          
+    async addRole () {    
+        // Get department selection options      
         const {rows: list} = await this.getTable('department', 'name'); 
-        console.log(list);
         
         if(list.length == 0){
             console.log("Please add a department first.\n");
             return;
         }
         
+        // Prompt for input
         const {department, title, salary} = await inquirer.prompt( [
             {
                 type: 'list',
@@ -88,12 +74,13 @@ class EmployeeTracker {
                 name: 'salary',
                 message: 'Annual Salary:  ',
                 validate: function(answer) {
-                    if(answer.length > 0) return true;
-                    return 'Please enter a salary? '
+                    if(Number.isInteger(parseInt(answer))) return true;
+                    return 'Please enter a numerical salary? '
                 }
             }
         ]);
-        
+
+        // retrieve the department id
         const {rows: departName} = await this.getDepartment(department);        
         const id = departName[0].id;        
 
@@ -107,7 +94,7 @@ class EmployeeTracker {
     
         db.query(sql, params, (err, result) => {
             if (err) {
-                res.status(400).json({ error: err.message });
+                console.log(err.message, '\n');
                 return;
             }
         });
@@ -117,9 +104,11 @@ class EmployeeTracker {
 
     // Add a employee
     async addEmployee () {
+        // Get role options
         const {rows} = await this.getTable('role');
         const list =[];
 
+        // Add titles for array for use in inquirer prompts
         rows.forEach (item => list.push(item.title));
 
         if(list.length == 0){
@@ -139,14 +128,18 @@ class EmployeeTracker {
                 name: 'name',
                 message: 'Last Name, First Name:  :  ',
                 validate: function(answer) {
-                    if(answer.length > 0) return true;
-                    return 'Please enter a name'
+                    if(answer.length > 0 && answer.search(/,/)) return true;
+                    return 'Please enter a name in Last-name, First-name format\n'
                 }
             },
             {
                 type: 'input',
                 name: 'manager',
-                message: 'Manager ID:  '
+                message: 'Manager ID:  ',
+                validate: function(answer) {
+                    if(Number.isInteger(parseInt(answer))) return true;
+                    return 'Please enter the manager id number'
+                }
             }
         ]);
         
@@ -158,13 +151,11 @@ class EmployeeTracker {
         });           
         
         const [ last_name, first_name ] = name.split(',');
-        console.log('manager: ', manager);
-        //console.log();        
 
         const employee = new Employee(first_name, last_name, role_id, manager);
         this.employees.push(employee);
 
-        // Add Role to database   
+        // Add Employee to database   
         let sql;
         if (manager === undefined | manager === '') {
             sql = `INSERT INTO employee (last_name, first_name, role_id)
@@ -173,18 +164,145 @@ class EmployeeTracker {
             sql = `INSERT INTO employee (last_name, first_name, role_id, manager_id)
         VALUES (?,?,?,?)`;
         }
-        console.log('sql: ', sql);
+        
         const params = [last_name, first_name, role_id, manager];
     
         db.query(sql, params, (err, result) => {
             if (err) {
-                res.status(400).json({ error: err.message });
+                console.log(err.message, '\n');
                 return;
             }
         });
 
         console.log(`Added ${last_name}, ${first_name} to the database\n`);
-    }// Add Employee
+    }// End Add Employee
+
+    // Get Single Department by name
+    async getDepartment(name){
+        return new Promise( (resolve, reject) => {
+                    
+            const sql = `SELECT * FROM department
+            WHERE name = ?`;
+            const params = name;
+
+            db.query(sql, params, (err, rows) => {
+                if (err) {
+                    console.log(err.message, '\n');
+                    return;
+                } else {
+                   resolve({
+                        ok: true,
+                        rows:  rows
+                    }) 
+                }
+            })
+        });
+    }//End getDepartment  
+
+    // Get Roles
+    async getRoles(){
+        return new Promise( (resolve, reject) => {
+            // Add Depart to data base        
+            const sql = `SELECT title FROM role`;
+            
+            db.query(sql, (err, rows) => {
+                if (err) {
+                    console.log(err.message, '\n');
+                    return;
+                } else {
+                   resolve({
+                        ok: true,
+                        rows:  rows
+                    }) 
+                }
+            })
+        });
+    }//End Role Names  
+
+    // Update Employee role 
+    async updateEmployeeRole(){
+        // Retrieve current employees
+        let rows  = await this.getTable('employee'); 
+        let results = rows.rows;
+
+        if(results.length == 0){
+            console.log("Please add an employee first.\n");
+            return;
+        }
+
+        const employeeList =[];
+        results.forEach(element => {
+            const tempStr = element.id + ' ' + element.name;
+            employeeList.push(tempStr);
+           }
+        );
+
+        // Retrieve current roles
+        rows = await this.getTable('role'); 
+        results = rows.rows;
+        const roleList =[];
+
+        results.forEach (element => {
+            const tempStr = element.id + ' ' +  element.title;
+            roleList.push(tempStr);
+        });
+
+        if(roleList.length == 0){
+            console.log("Please add a role first.\n");
+            return;
+        }    
+        
+        // Prompt for user input
+        const {employee, roleName} = await inquirer.prompt( [
+            {
+                type: 'list',
+                name: 'employee',
+                message: '\nSelect an employee\n',
+                choices: employeeList            
+            },
+            {
+                type: 'list',
+                name: 'roleName',
+                message: '\nSelect a role\n',
+                choices: roleList            
+            }
+        ]);  
+       
+        const [employeeID, ...name ]= employee.split(' ');
+        const [newRoleID, ...str2 ]= roleName.split(' ');
+
+        // Update database
+        return new Promise( (resolve, reject) => {
+                
+            const sql = `UPDATE employee
+                        SET role_id=${newRoleID}
+                        WHERE employee.id=${employeeID};`;
+
+            db.query(sql, (err, rows) => {
+                if (err) {
+                    console.log(err.message, '\n');
+                    return;
+                } else {
+                    resolve({
+                        ok: true,
+                        rows:  rows
+                    }) 
+                }
+            })
+        });
+        
+    }//End updateEmployeeRole
+    
+    // Print table content
+    printTable (table, rows) {
+          
+        if(rows.length == 0) {
+            console.log(`No ${table}s are present\n`)
+            return;
+        }             
+        console.log('\n\n');
+        console.table(rows);  
+    }
 
     // Get all rows of a table 
     async getTable(name){
@@ -212,7 +330,7 @@ class EmployeeTracker {
 
             db.query(sql, (err, rows) => {
                 if (err) {
-                    reject({ error: err.message });
+                    console.log(err.message, '\n');
                     return;
                 } else {
                    resolve({
@@ -223,129 +341,6 @@ class EmployeeTracker {
             })
         });
     }//End getTable
-
-    // Get Single Department by name
-    async getDepartment(name){
-        return new Promise( (resolve, reject) => {
-            // Add Depart to data base        
-            const sql = `SELECT * FROM department
-            WHERE name = ?`;
-            const params = name;
-
-            db.query(sql, params, (err, rows) => {
-                if (err) {
-                    reject({ error: err.message });
-                    return;
-                } else {
-                   resolve({
-                        ok: true,
-                        rows:  rows
-                    }) 
-                }
-            })
-        });
-    }//End getDepartment  
-
-    async getRoles(){
-        return new Promise( (resolve, reject) => {
-            // Add Depart to data base        
-            const sql = `SELECT title FROM role`;
-            
-            db.query(sql, (err, rows) => {
-                if (err) {
-                    reject({ error: err.message });
-                    return;
-                } else {
-                   resolve({
-                        ok: true,
-                        rows:  rows
-                    }) 
-                }
-            })
-        });
-    }//End Role Names  
-
-    // Get all rows of a table 
-async updateEmployeeRole(){
-        let rows  = await this.getTable('employee'); 
-        let results = rows.rows;
-
-        if(results.length == 0){
-            console.log("Please add an employee first.\n");
-            return;
-        }
-
-        const employeeList =[];
-        results.forEach(element => {
-            const tempStr = element.id + ' ' + element.name;
-            employeeList.push(tempStr);
-           }
-        );
-
-        rows = await this.getTable('role'); 
-        results = rows.rows;
-        const roleList =[];
-
-        results.forEach (element => {
-            const tempStr = element.id + ' ' +  element.title;
-            roleList.push(tempStr);
-        });
-
-        if(roleList.length == 0){
-            console.log("Please add a role first.\n");
-            return;
-        }    
-                  
-        const {employee, roleName} = await inquirer.prompt( [
-            {
-                type: 'list',
-                name: 'employee',
-                message: '\nSelect an employee\n',
-                choices: employeeList            
-            },
-            {
-                type: 'list',
-                name: 'roleName',
-                message: '\nSelect a role\n',
-                choices: roleList            
-            }
-        ]);  
-        console.log(employee);
-        const [employeeID, ...name ]= employee.split(' ');
-        
-        console.log(roleName);
-        const [newRoleID, ...str2 ]= roleName.split(' ');
-
-        return new Promise( (resolve, reject) => {
-                
-            const sql = `UPDATE employee
-                        SET role_id=${newRoleID}
-                        WHERE employee.id=${employeeID};`;
-
-            db.query(sql, (err, rows) => {
-                if (err) {
-                    reject({ error: err.message });
-                    return;
-                } else {
-                    resolve({
-                        ok: true,
-                        rows:  rows
-                    }) 
-                }
-            })
-        });
-        
-    }//End updateEmployeeRole
-    
-    printTable (table, rows) {
-          
-        if(rows.length == 0) {
-            console.log(`No ${table}s are present\n`)
-            return;
-        }             
-        console.log('\n\n');
-        console.table(rows);  
-    }
 
     // List and process menu options
     async menuPrompt () {
@@ -398,5 +393,4 @@ db.connect(err => {
 });
   
 const tracker = new EmployeeTracker();
-//console.log(tracker.departments);
 tracker.init();

@@ -22,19 +22,19 @@
 
  - Go to the directory location where you saved the application 
  - Install dependencies
- - npm install
+    - npm install
  - Start mysql
  - source db/db.sql
  - source db/schema.sql
- - source db/seeds.sql
+ - Seed the database with data or skip this and start with a empty database
+    - source db/seeds.sql
  - Type 'node index' to start the application. 
- - Answer the series of questions to provide the details for the project's readme.
+ - Use up and down arrow keys to select menu options.  Answer the series of questions for options that require input.
 
   ## Demo Images
-  ![](./assets/images/demo-image.jpg/)
-  ![](./assets/images/cli-demo1.jpg/) 
+  ![](./assets/images/cli-demo1.jpg/) </br>
+  ![](./assets/images/cli-demo3.jpg/) </br>
   ![](./assets/images/cli-demo2.jpg/)
-  ![](./assets/images/cli-demo3.jpg/)
 
   ## Questions
 
