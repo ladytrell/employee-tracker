@@ -35,9 +35,7 @@
 
 https://user-images.githubusercontent.com/38196944/167268672-cff5a575-8e5c-47fd-9e42-be5c12cfc96a.mp4
 
-emo1.jpg/) 
-
-  ![](./assets/images/cli-d</br>
+  ![](./assets/images/cli-demo1.jpg/) </br>
   ![](./assets/images/cli-demo3.jpg/) </br>
   ![](./assets/images/cli-demo2.jpg/)
 
